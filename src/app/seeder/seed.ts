@@ -38,8 +38,6 @@ const seedContents = async () => {
       aboutUs: '',
       termsAndConditions: '',
       privacyPolicy: '',
-      supports: '',
-      faq: '',
       createdBy: admin?._id,
     })
 
