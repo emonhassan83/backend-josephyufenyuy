@@ -7,6 +7,8 @@ import {
   USER_ROLE,
   UserSearchableFields,
 } from './user.constant'
+import emailSender from '../../utils/emailSender'
+import { userStatusChangeTemplate } from './user.utils'
 
 const registerUserIntoDB = async (payload: TUser) => {
   if (payload.role === 'admin') {
@@ -108,27 +110,29 @@ const changeUserStatusFromDB = async (payload: any) => {
     throw new AppError(httpStatus.FORBIDDEN, 'This user is deleted !')
   }
 
-  const updateUserStatus = await User.findByIdAndUpdate(
+  const updateUser = await User.findByIdAndUpdate(
     userId,
     { status },
     { new: true },
   ).select(
     '_id id name email photoUrl contactNumber status',
   )
-  if (!updateUserStatus) {
+  if (!updateUser) {
     throw new AppError(
       httpStatus.NOT_FOUND,
       'User not found and failed to update status!',
     )
   }
 
-  // // Send a notification to the admin when a user's status changes
-  // await sendUserStatusNotifYToAdmin(status, user)
+  
+  // Send Status Change Email Notification
+  await emailSender(
+    updateUser.email,
+    'Your Account Status Has Been Updated',
+    userStatusChangeTemplate(updateUser.name, updateUser.status)
+  );
 
-  // // Send a notification to the user when their own profile status changes
-  // await sendUserStatusNotifYToUser(status, user)
-
-  return updateUserStatus
+  return updateUser
 }
 
 const updateUserInfoFromDB = async (
@@ -137,18 +141,8 @@ const updateUserInfoFromDB = async (
 ) => {
   //* if the user is is not exist
   const user = await User.findById(userId)
-  if (!user) {
+  if (!user || user?.isDeleted) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found!')
-  }
-
-  //* checking if the user is already deleted
-  if (user?.isDeleted) {
-    throw new AppError(httpStatus.FORBIDDEN, 'This user is deleted !')
-  }
-
-  //* checking if the user is blocked
-  if (user?.status === 'blocked') {
-    throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked ! !')
   }
 
   const updatedUser = await User.findByIdAndUpdate(userId, payload, {

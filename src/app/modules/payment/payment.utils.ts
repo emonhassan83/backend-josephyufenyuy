@@ -1,10 +1,5 @@
 import Stripe from 'stripe'
 import config from '../../config'
-import { TPayment } from './payment.interface'
-import { findAdmin } from '../../utils/findAdmin'
-import { messages } from '../notification/notification.constant'
-import { NotificationService } from '../notification/notification.service'
-import { modeType } from '../notification/notification.interface'
 
 const stripe: Stripe = new Stripe(config.stripe?.stripe_api_secret as string, {
   apiVersion: '2025-02-24.acacia',
@@ -47,55 +42,22 @@ export const createCheckoutSession = async (payload: TPayload) => {
   return paymentGatewayData
 }
 
-
-export const paymentNotifyToAdmin = async (
-  type: 'SUCCESS' | 'REFUND',
-  payment: TPayment,
+export const generatePaymentEmailTemplate = (
+  name: string,
+  amount: number,
+  transactionId: string
 ) => {
-  const admin = await findAdmin()
+  return `
+    <div style="font-family: Arial, sans-serif; padding: 20px;">
+      <h2>Payment Confirmation</h2>
+      <p>Dear ${name},</p>
+      <p>Thank you for your payment. We're pleased to confirm that your transaction has been successfully processed.</p>
 
-  // Define message and description based on type
-  const message =
-    type === 'SUCCESS'
-      ? messages.paymentManagement.paymentSuccess
-      : messages.paymentManagement.paymentRefunded
+      <p><strong>Amount Paid:</strong> $${amount}</p>
+      <p><strong>Transaction ID:</strong> ${transactionId}</p>
 
-  const description =
-    type === 'SUCCESS'
-      ? `A payment of $${payment.amount} has been successfully received. Transaction ID: ${payment.transactionId}.`
-      : `A refund of $${payment.amount} has been successfully processed. Refund Transaction ID: ${payment.transactionId}.`
-
-  // Create a notification entry
-  await NotificationService.createNotificationIntoDB({
-    receiver: admin?._id,
-    message,
-    description,
-    reference: payment.order,
-    model_type: modeType.Payment,
-  })
-}
-
-export const paymentNotifyToUser = async (
-  type: 'SUCCESS' | 'REFUND',
-  payment: TPayment,
-) => {
-  // Define message and description based on type
-  const message =
-    type === 'SUCCESS'
-      ? messages.paymentManagement.paymentSuccess
-      : messages.paymentManagement.paymentRefunded
-
-  const description =
-    type === 'SUCCESS'
-      ? `Your payment of $${payment.amount} has been successfully processed. Transaction ID: ${payment.transactionId}.`
-      : `A refund of $${payment.amount} has been issued to your account. Refund Transaction ID: ${payment.transactionId}.`
-
-  // Create a notification entry
-  await NotificationService.createNotificationIntoDB({
-    receiver: payment?.user,
-    message,
-    description,
-    reference: payment.order,
-    model_type: modeType.Payment,
-  })
-}
+      <p>You will receive updates regarding your order as we move into the next steps.</p>
+      <p>Warm regards,<br/>Customer Support Team</p>
+    </div>
+  `;
+};

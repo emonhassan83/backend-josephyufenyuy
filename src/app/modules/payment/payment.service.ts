@@ -9,13 +9,13 @@ import { startSession } from 'mongoose'
 import { PAYMENT_STATUS } from './payment.constants'
 import {
   createCheckoutSession,
-  paymentNotifyToAdmin,
-  paymentNotifyToUser,
+  generatePaymentEmailTemplate,
 } from './payment.utils'
 import { User } from '../user/user.model'
 import { generateTransactionId } from '../../utils/generateTransctionId'
 import { ServiceBooking } from '../serviceBooking/serviceBooking.model'
 import { ORDER_STATUS } from '../serviceBooking/serviceBooking.constant'
+import emailSender from '../../utils/emailSender'
 
 const stripe = new Stripe(config.stripe?.stripe_api_secret as string, {
   apiVersion: '2025-02-24.acacia',
@@ -108,7 +108,7 @@ const confirmPayment = async (query: Record<string, any>) => {
     if (!payment) throw new AppError(httpStatus.NOT_FOUND, 'Payment not found!')
 
     // 2. Update Order Status
-    const order = await ServiceBooking.findOneAndUpdate(
+    const booking = await ServiceBooking.findOneAndUpdate(
       { _id: payment.booking },
       {
         transactionId: payment.transactionId,
@@ -117,17 +117,25 @@ const confirmPayment = async (query: Record<string, any>) => {
       },
       { new: true, session },
     )
-
-    // when order confirm if order in document found then sent to user 2 mail
-    if (!order) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Order not found!')
+    if (!booking) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Booking not found!')
     }
 
-    // sent notify to user when payment is success
-    await paymentNotifyToUser('SUCCESS', payment)
+    const user = await User.findById(payment.user)
 
-    // sent notify to admin when payment is success
-    await paymentNotifyToAdmin('SUCCESS', payment)
+    // 🚀 **Send 2 Emails After Successful Payment**
+    if (user) {
+      // Payment Confirmation email
+      await emailSender(
+        user.email,
+        'Payment Confirmation – Thank You for Your Purchase',
+        generatePaymentEmailTemplate(
+          user.name,
+          payment.amount,
+          payment.transactionId,
+        ),
+      )
+    }
 
     await session.commitTransaction()
     return payment
