@@ -56,7 +56,7 @@ export const generatePaymentEmailTemplate = (
       <p><strong>Amount Paid:</strong> $${amount}</p>
       <p><strong>Transaction ID:</strong> ${transactionId}</p>
 
-      <p>You will receive updates regarding your order as we move into the next steps.</p>
+      <p>You will receive updates regarding your booking as we move into the next steps.</p>
       <p>Warm regards,<br/>Customer Support Team</p>
     </div>
   `;

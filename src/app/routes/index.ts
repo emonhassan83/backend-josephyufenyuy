@@ -7,6 +7,7 @@ import { ServiceRoutes } from '../modules/service/service.route'
 import { ServiceBookingRoutes } from '../modules/serviceBooking/serviceBooking.route'
 import { InquireRoutes } from '../modules/inquire/inquire.route'
 import { PaymentRoutes } from '../modules/payment/payment.route'
+import { MetaRoutes } from '../modules/meta/meta.route'
 
 const router = Router()
 
@@ -42,6 +43,10 @@ const moduleRoutes = [
   {
     path: '/payments',
     route: PaymentRoutes,
+  },
+  {
+    path: '/meta',
+    route: MetaRoutes,
   },
 ]
 
