@@ -7,13 +7,13 @@ import { User } from '../user/user.model'
 
 const getAdminDashboardMetaData = async () => {
   const totalUsers = await User.countDocuments({
-     role: { $ne: USER_ROLE.admin },
+    role: { $ne: USER_ROLE.admin },
     isDeleted: false,
   })
   const totalService = await Service.countDocuments({ isDeleted: false })
   const totalBooking = await ServiceBooking.countDocuments()
 
-   const totalRevenueData = await Payment.aggregate([
+  const totalRevenueData = await Payment.aggregate([
     {
       $match: {
         isPaid: true,
@@ -27,15 +27,24 @@ const getAdminDashboardMetaData = async () => {
         totalAmount: { $sum: '$amount' },
       },
     },
-  ]);
+  ])
 
-  const totalRevenue = totalRevenueData?.[0]?.totalAmount || 0;
+  const totalRevenue = totalRevenueData?.[0]?.totalAmount || 0
 
   // 1. Get 4 latest active services
   const services = await Service.find({ isDeleted: false })
     .sort({ createdAt: -1 })
     .limit(4)
-    .select('title subtitle images')
+    .select('title subTitle images')
+
+  // 1. Get 4 latest active services
+  const bookings = await ServiceBooking.find({ isDeleted: false })
+    .sort({ createdAt: -1 })
+    .limit(3)
+    .populate([
+      { path: 'user', select: 'name email' },
+      { path: 'service', select: 'title' },
+    ])
 
   return {
     totalUsers,
@@ -43,6 +52,7 @@ const getAdminDashboardMetaData = async () => {
     totalBooking,
     totalRevenue,
     services,
+    bookings,
   }
 }
 

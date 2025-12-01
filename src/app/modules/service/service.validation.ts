@@ -34,9 +34,9 @@ const createValidationSchema = z.object({
     finalPrice: z.number({
       required_error: 'Service final price is required!',
     }),
-    info: z.array(serviceInfoSchema).nonempty({
-      message: 'Service info list is required!',
-    }),
+    // info: z.array(serviceInfoSchema).nonempty({
+    //   message: 'Service info list is required!',
+    // }),
   }),
 })
 
