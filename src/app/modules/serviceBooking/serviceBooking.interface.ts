@@ -10,6 +10,7 @@ export type TServiceBooking = {
   paymentStatus: TPaymentStatus
   transactionId?: string
   notes?: string
+  isDeleted: boolean
 }
 
 export type TServiceBookingModel = Model<TServiceBooking, Record<string, unknown>>

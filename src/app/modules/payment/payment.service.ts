@@ -5,20 +5,17 @@ import httpStatus from 'http-status'
 import Payment from './payment.models'
 import AppError from '../../errors/AppError'
 import QueryBuilder from '../../builder/QueryBuilder'
-import mongoose, { startSession } from 'mongoose'
+import { startSession } from 'mongoose'
 import { PAYMENT_STATUS } from './payment.constants'
-import { generateTransactionId } from '../../utils/generateTransctionId'
 import {
   createCheckoutSession,
   paymentNotifyToAdmin,
   paymentNotifyToUser,
 } from './payment.utils'
-import Order from '../orders/orders.models'
 import { User } from '../user/user.model'
-import { ORDER_STATUS } from '../orders/orders.constants'
-import { Items } from '../items/items.models'
-import { Cart } from '../cart/cart.model'
-import Product from '../product/product.models'
+import { generateTransactionId } from '../../utils/generateTransctionId'
+import { ServiceBooking } from '../serviceBooking/serviceBooking.model'
+import { ORDER_STATUS } from '../serviceBooking/serviceBooking.constant'
 
 const stripe = new Stripe(config.stripe?.stripe_api_secret as string, {
   apiVersion: '2025-02-24.acacia',
@@ -27,29 +24,28 @@ const stripe = new Stripe(config.stripe?.stripe_api_secret as string, {
 
 const initiatePayment = async (payload: TPayment) => {
   const transactionId = generateTransactionId()
-  const { user: userId, order: orderId } = payload
+  const { user: userId, booking: bookingId } = payload
 
   const user = await User.findById(userId)
   if (!user || user?.isDeleted) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found!')
   }
 
-  //* checking if the user is blocked
-  if (user?.status === 'blocked') {
-    throw new AppError(httpStatus.FORBIDDEN, 'Your account is blocked !')
-  }
-
   // Determine model type and fetch associated data
-  const order = await Order.findById(orderId)
-  if (!order || order?.isDeleted) {
+  const booking = await ServiceBooking.findById(bookingId)
+  if (!booking || booking?.isDeleted) {
     throw new AppError(httpStatus.NOT_FOUND, 'Order not found!')
   }
 
   // Always set the total amount
-  payload.amount = order.amount
+  payload.amount = booking.amount
 
   // Check for existing unpaid payment
-  let paymentData = await Payment.findOne({ orderId, isPaid: false, userId })
+  let paymentData = await Payment.findOne({
+    booking: bookingId,
+    isPaid: false,
+    user: userId,
+  })
 
   if (paymentData) {
     paymentData = await Payment.findByIdAndUpdate(
@@ -72,7 +68,7 @@ const initiatePayment = async (payload: TPayment) => {
   const checkoutSession = await createCheckoutSession({
     product: {
       amount: paymentData.amount,
-      name: 'Order Payment',
+      name: 'Booking Payment',
       quantity: 1,
     },
     paymentId: paymentData._id,
@@ -97,7 +93,7 @@ const confirmPayment = async (query: Record<string, any>) => {
 
   try {
     session.startTransaction()
-    
+
     // 1. Update Payment Record
     const payment = await Payment.findByIdAndUpdate(
       paymentId,
@@ -106,66 +102,25 @@ const confirmPayment = async (query: Record<string, any>) => {
         status: PAYMENT_STATUS.paid,
         paymentIntentId,
       },
-      { new: true, session }
+      { new: true, session },
     )
 
     if (!payment) throw new AppError(httpStatus.NOT_FOUND, 'Payment not found!')
 
     // 2. Update Order Status
-    const order = await Order.findOneAndUpdate(
-      { _id: payment.order },
+    const order = await ServiceBooking.findOneAndUpdate(
+      { _id: payment.booking },
       {
         transactionId: payment.transactionId,
         paymentStatus: PAYMENT_STATUS.paid,
         status: ORDER_STATUS.processing,
       },
-      { new: true, session }
+      { new: true, session },
     )
 
     // when order confirm if order in document found then sent to user 2 mail
     if (!order) {
       throw new AppError(httpStatus.NOT_FOUND, 'Order not found!')
-    }
-
-    // 3. Get All Items in This Order
-    const orderItems = await Items.find({ order: order._id }).session(session)
-    if (!orderItems.length) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Order items not found!')
-    }
-
-    // 4. Loop Through Each Item → Update Product stock/sale/size
-    for (const item of orderItems) {
-      const product = await Product.findById(item.product).session(session)
-      if (!product) continue
-
-      // Reduce total stock
-      product.stock = Math.max(0, product.stock - item.quantity)
-
-      // Increase total sales count
-      product.sale = (product.sale || 0) + item.quantity
-
-      // Reduce quantity from matching size (if applicable)
-      if (product.size && product.size.length > 0) {
-        const matchedSize = product.size.find((s: any) => s.type === item.size)
-        if (matchedSize) {
-          matchedSize.quantity = Math.max(0, matchedSize.quantity - item.quantity)
-        }
-      }
-
-      await product.save({ session })
-    }
-
-    // ✅ 5. Remove purchased items from user's Cart
-    const user = await User.findById(order.user)
-    if (orderItems?.length && user) {
-      const cartDeletePromises = orderItems.map((item) =>
-        Cart.deleteOne({
-          user: user._id,
-          reference: item.product,
-        }).session(session),
-      )
-
-      await Promise.all(cartDeletePromises)
     }
 
     // sent notify to user when payment is success
@@ -197,7 +152,7 @@ const getAllPaymentsFromDB = async (query: Record<string, any>) => {
   const reviewsModel = new QueryBuilder(
     Payment.find().populate([
       { path: 'order' },
-      { path: 'user', select: 'name email photoUrl contactNo' },
+      { path: 'user', select: 'name email photoUrl contactNumber' },
     ]),
     query,
   )
@@ -218,8 +173,8 @@ const getAllPaymentsFromDB = async (query: Record<string, any>) => {
 
 const getAPaymentsFromDB = async (id: string) => {
   const payment = await Payment.findById(id).populate([
-    { path: 'order' },
-    { path: 'user', select: 'name email photoUrl contactNumber age' },
+    { path: 'booking' },
+    { path: 'user', select: 'name email photoUrl contactNumber' },
   ])
   if (!payment) {
     throw new AppError(httpStatus.NOT_FOUND, 'Payment not found!')
@@ -228,82 +183,7 @@ const getAPaymentsFromDB = async (id: string) => {
   return payment
 }
 
-const refundPayment = async (payload: any) => {
-  if (!payload?.intendId) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Payment intent ID is required')
-  }
-
-  const session = await mongoose.startSession()
-  session.startTransaction()
-
-  try {
-    const refundData: Stripe.RefundCreateParams = {
-      payment_intent: payload.intendId,
-      ...(payload.amount && {
-        amount: payload.amount * 100,
-        reason: 'requested_by_customer',
-      }),
-    }
-
-    const paymentData = await Payment.findOneAndUpdate(
-      { paymentIntentId: payload.intendId },
-      { session },
-    )
-
-    // Validate and update order status
-    const order = await Order.findById(paymentData?.order)
-    if (!order) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Booking record not found')
-    }
-
-    if (order.status !== ORDER_STATUS.cancelled) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Only cancelled order can be refunded. Please cancel the order first.',
-      )
-    }
-
-    await Order.findByIdAndUpdate(
-      paymentData?.order,
-      { paymentStatus: PAYMENT_STATUS.refunded },
-      { new: true, session },
-    )
-
-    // Find and update payment status
-    const payment = await Payment.findOneAndUpdate(
-      { paymentIntentId: payload.intendId },
-      { status: 'refunded', isPaid: false },
-      { new: true, session },
-    )
-
-    if (!payment) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Payment record not updated')
-    }
-
-    // Process refund via Stripe
-    const response = await stripe.refunds.create(refundData)
-
-    // sent notify to user when payment is refund
-    await paymentNotifyToUser('REFUND', payment)
-
-    // sent notify to admin when payment is refund
-    await paymentNotifyToAdmin('REFUND', payment)
-
-    // Commit transaction
-    await session.commitTransaction()
-    session.endSession()
-
-    return response
-  } catch (error: any) {
-    await session.abortTransaction()
-    session.endSession()
-    console.error('Refund Error:', error)
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      error.message || 'Refund processing failed',
-    )
-  }
-}
+const refundPayment = async (payload: any) => {}
 
 export const paymentService = {
   initiatePayment,

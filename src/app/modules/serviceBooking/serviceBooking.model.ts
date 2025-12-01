@@ -36,6 +36,7 @@ const serviceBookingSchema = new Schema<TServiceBooking>(
       default: null,
     },
     notes: { type: String, default: null },
+    isDeleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,

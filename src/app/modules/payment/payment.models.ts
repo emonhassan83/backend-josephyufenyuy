@@ -14,10 +14,10 @@ const PaymentSchema: Schema = new Schema<TPayment>(
       default: () => generateCryptoString(10),
     },
     user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    order: {
+    booking: {
       type: Schema.Types.ObjectId,
-      refPath: 'Order',
-      required: [true, 'order id is required'],
+      ref: 'ServiceBooking',
+      required: true,
     },
     transactionId: { type: String, unique: true },
     amount: { type: Number, min: 0 },

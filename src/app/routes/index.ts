@@ -6,6 +6,7 @@ import { ContentsRoutes } from '../modules/contents/contents.route'
 import { ServiceRoutes } from '../modules/service/service.route'
 import { ServiceBookingRoutes } from '../modules/serviceBooking/serviceBooking.route'
 import { InquireRoutes } from '../modules/inquire/inquire.route'
+import { PaymentRoutes } from '../modules/payment/payment.route'
 
 const router = Router()
 
@@ -37,6 +38,10 @@ const moduleRoutes = [
   {
     path: '/inquires',
     route: InquireRoutes,
+  },
+  {
+    path: '/payments',
+    route: PaymentRoutes,
   },
 ]
 

@@ -5,7 +5,7 @@ export interface TPayment {
   _id: string
   id: string
   user: Types.ObjectId
-  order: Types.ObjectId
+  booking: Types.ObjectId
   transactionId: string
   paymentIntentId: string
   amount: number
