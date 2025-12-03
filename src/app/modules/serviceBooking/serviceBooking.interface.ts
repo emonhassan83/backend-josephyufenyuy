@@ -5,6 +5,9 @@ import { TOrderStatus, TPaymentStatus } from './serviceBooking.constant'
 export type TServiceBooking = {
   service: Types.ObjectId
   user: Types.ObjectId | TUser
+  name: string
+  email: string
+  contactNumber: string
   amount: number
   status: TOrderStatus
   paymentStatus: TPaymentStatus

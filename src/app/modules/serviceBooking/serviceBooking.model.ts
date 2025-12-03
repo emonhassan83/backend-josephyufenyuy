@@ -15,6 +15,18 @@ const serviceBookingSchema = new Schema<TServiceBooking>(
     user: {
       type: Schema.Types.ObjectId,
       ref: 'User',
+      required: false,
+    },
+    name: {
+      type: String,
+      required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+    },
+    contactNumber: {
+      type: String,
       required: true,
     },
     amount: {

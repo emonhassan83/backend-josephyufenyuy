@@ -5,14 +5,15 @@ import { TServiceBooking } from './serviceBooking.interface'
 import { ServiceBooking } from './serviceBooking.model'
 import { Service } from '../service/service.model'
 import { User } from '../user/user.model'
+import { ORDER_STATUS, PAYMENT_STATUS } from './serviceBooking.constant'
 
 const insertIntoDB = async (payload: TServiceBooking) => {
-  const { service: serviceId, user: userId } = payload
+  const { service: serviceId } = payload
 
-  const user = await User.findById(userId)
-  if (!user || user?.isDeleted) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found!')
-  }
+  // const user = await User.findById(userId)
+  // if (!user || user?.isDeleted) {
+  //   throw new AppError(httpStatus.NOT_FOUND, 'User not found!')
+  // }
 
   const service = await Service.findById(serviceId)
   if (!service || service?.isDeleted) {
@@ -32,13 +33,17 @@ const insertIntoDB = async (payload: TServiceBooking) => {
 
 const getAllIntoDB = async (query: Record<string, unknown>) => {
   const serviceBookingQuery = new QueryBuilder(
-    ServiceBooking.find().populate([
-      { path: 'user', select: 'name email photoUrl contactNumber' },
+    ServiceBooking.find({
+      status: ORDER_STATUS.completed,
+      paymentStatus: PAYMENT_STATUS.paid,
+      isDeleted: false,
+    }).populate([
+      // { path: 'user', select: 'name email photoUrl contactNumber' },
       { path: 'service', select: 'title' },
     ]),
     query,
   )
-    .search([''])
+    .search(['name'])
     .filter()
     .sort()
     .paginate()
@@ -58,7 +63,7 @@ const getAllIntoDB = async (query: Record<string, unknown>) => {
 
 const getAIntoDB = async (id: string) => {
   const result = await ServiceBooking.findById(id).populate([
-    { path: 'user', select: 'name email photoUrl contactNumber' },
+    // { path: 'user', select: 'name email photoUrl contactNumber' },
     { path: 'service' },
   ])
   if (!result) {

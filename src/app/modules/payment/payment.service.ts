@@ -24,12 +24,12 @@ const stripe = new Stripe(config.stripe?.stripe_api_secret as string, {
 
 const initiatePayment = async (payload: TPayment) => {
   const transactionId = generateTransactionId()
-  const { user: userId, booking: bookingId } = payload
+  const { booking: bookingId } = payload
 
-  const user = await User.findById(userId)
-  if (!user || user?.isDeleted) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found!')
-  }
+  // const user = await User.findById(userId)
+  // if (!user || user?.isDeleted) {
+  //   throw new AppError(httpStatus.NOT_FOUND, 'User not found!')
+  // }
 
   // Determine model type and fetch associated data
   const booking = await ServiceBooking.findById(bookingId)
@@ -44,7 +44,7 @@ const initiatePayment = async (payload: TPayment) => {
   let paymentData = await Payment.findOne({
     booking: bookingId,
     isPaid: false,
-    user: userId,
+    // user: userId,
   })
 
   if (paymentData) {
@@ -159,8 +159,8 @@ const confirmPayment = async (query: Record<string, any>) => {
 const getAllPaymentsFromDB = async (query: Record<string, any>) => {
   const reviewsModel = new QueryBuilder(
     Payment.find().populate([
-      { path: 'order' },
-      { path: 'user', select: 'name email photoUrl contactNumber' },
+      { path: 'booking' },
+      // { path: 'user', select: 'name email photoUrl contactNumber' },
     ]),
     query,
   )
@@ -182,7 +182,7 @@ const getAllPaymentsFromDB = async (query: Record<string, any>) => {
 const getAPaymentsFromDB = async (id: string) => {
   const payment = await Payment.findById(id).populate([
     { path: 'booking' },
-    { path: 'user', select: 'name email photoUrl contactNumber' },
+    // { path: 'user', select: 'name email photoUrl contactNumber' },
   ])
   if (!payment) {
     throw new AppError(httpStatus.NOT_FOUND, 'Payment not found!')

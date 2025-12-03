@@ -9,7 +9,7 @@ const router = express.Router()
 
 router.post(
   '/',
-  auth(USER_ROLE.user),
+  // auth(USER_ROLE.user),
   zodValidationRequest(ServiceBookingValidation.createValidationSchema),
   ServiceBookingControllers.insertIntoDB,
 )

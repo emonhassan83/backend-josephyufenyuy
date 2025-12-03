@@ -10,7 +10,16 @@ const objectIdSchema = z.string().refine((val) => Types.ObjectId.isValid(val), {
 const createValidationSchema = z.object({
   body: z.object({
     service: objectIdSchema,
-    user: objectIdSchema,
+    user: objectIdSchema.optional(),
+    name: z.string({
+      required_error: 'Booking name is required',
+    }),
+    email: z.string({
+      required_error: 'Booking email is required',
+    }).email(),
+    contactNumber: z.string({
+      required_error: 'Booking contact number is required',
+    }),
     notes: z.string().nullable().optional(),
   }),
 })
@@ -18,6 +27,9 @@ const createValidationSchema = z.object({
 // ✅ Update Validation Schema (everything optional)
 const updateValidationSchema = z.object({
   body: z.object({
+    name: z.string().optional(),
+    email: z.string().email().optional(),
+    contactNumber: z.string().optional(),
     notes: z.string().nullable().optional(),
   }),
 })
