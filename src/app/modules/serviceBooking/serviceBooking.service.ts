@@ -34,7 +34,7 @@ const insertIntoDB = async (payload: TServiceBooking) => {
 const getAllIntoDB = async (query: Record<string, unknown>) => {
   const serviceBookingQuery = new QueryBuilder(
     ServiceBooking.find({
-      status: ORDER_STATUS.completed,
+      status: { $ne: ORDER_STATUS.pending },
       paymentStatus: PAYMENT_STATUS.paid,
       isDeleted: false,
     }).populate([
