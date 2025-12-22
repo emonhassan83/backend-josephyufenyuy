@@ -6,7 +6,7 @@ import { findAdmin } from '../utils/findAdmin'
 
 const adminUser = {
   name: 'josephyufenyuy',
-  email: 'admin@josephyufenyuy.gmail.com',
+  email: 'josephyufenyuyjr@pltechconsulting.com',
   password: config.admin_pass,
   role: USER_ROLE.admin,
   contactNumber: '87623456778',
