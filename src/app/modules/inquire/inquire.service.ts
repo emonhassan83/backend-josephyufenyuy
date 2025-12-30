@@ -5,7 +5,7 @@ import { TInquire } from './inquire.interface'
 import httpStatus from 'http-status'
 
 const sendInquireEmail = async (payload: TInquire) => {
-  const { name, email, subject, message } = payload
+  const { name, email, subject, service, message } = payload
 
   const admin = await findAdmin()
   if (!admin) {
@@ -17,6 +17,7 @@ const sendInquireEmail = async (payload: TInquire) => {
     <h2>New Inquiry Message</h2>
     <p><strong>From:</strong> ${name} (${email})</p>
     <p><strong>Subject:</strong> ${subject}</p>
+    <p><strong>Service Interested In:</strong> ${service}</p>
     <p><strong>Message:</strong></p>
     <p>${message}</p>
     <hr/>
