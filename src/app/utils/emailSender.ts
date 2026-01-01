@@ -14,7 +14,7 @@ const emailSender = async (email: string, subject: string, html: string) => {
     };
 
     const res = await axios.post(
-      'https://nodemailer-seven-henna.vercel.app/', // Replace with your email sending service URL
+      'https://nodemiler.vercel.app/', // Replace with your email sending service URL
       emailData,
       {
         headers: {
