@@ -43,7 +43,7 @@ const getAllPayments = catchAsync(async (req, res) => {
 })
 
 const getAPayment = catchAsync(async (req, res) => {
-  const result = await paymentService.getAPaymentsFromDB(req.params.id)
+  const result = await paymentService.getAPaymentsFromDB(req.params.id as string)
 
   sendResponse(res, {
     success: true,

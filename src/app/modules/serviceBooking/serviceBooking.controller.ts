@@ -40,7 +40,7 @@ const getMyBookingsIntoDB = catchAsync(async (req, res) => {
 })
 
 const getAIntoDB = catchAsync(async (req, res) => {
-  const result = await ServiceBookingService.getAIntoDB(req.params.id)
+  const result = await ServiceBookingService.getAIntoDB(req.params.id as string)
 
   sendResponse(res, {
     success: true,
@@ -52,7 +52,7 @@ const getAIntoDB = catchAsync(async (req, res) => {
 
 const updateIntoDB = catchAsync(async (req, res) => {
   const result = await ServiceBookingService.updateIntoDB(
-    req.params.id,
+    req.params.id as string,
     req.body
   )
 
@@ -65,7 +65,7 @@ const updateIntoDB = catchAsync(async (req, res) => {
 })
 
 const deleteAIntoDB = catchAsync(async (req, res) => {
-  const result = await ServiceBookingService.deleteAIntoDB(req.params.id)
+  const result = await ServiceBookingService.deleteAIntoDB(req.params.id as string)
 
   sendResponse(res, {
     success: true,
