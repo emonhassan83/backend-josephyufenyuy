@@ -27,7 +27,7 @@ const getAllIntoDB = catchAsync(async (req, res) => {
 })
 
 const getAIntoDB = catchAsync(async (req, res) => {
-  const result = await ServiceService.getAIntoDB(req.params.id)
+  const result = await ServiceService.getAIntoDB(req.params.id as string)
 
   sendResponse(res, {
     success: true,
@@ -39,9 +39,9 @@ const getAIntoDB = catchAsync(async (req, res) => {
 
 const updateIntoDB = catchAsync(async (req, res) => {
   const result = await ServiceService.updateIntoDB(
-    req.params.id,
+    req.params.id as string,
     req.body,
-    req.files
+    req.files,
   )
 
   sendResponse(res, {
@@ -53,7 +53,7 @@ const updateIntoDB = catchAsync(async (req, res) => {
 })
 
 const deleteAIntoDB = catchAsync(async (req, res) => {
-  const result = await ServiceService.deleteAIntoDB(req.params.id)
+  const result = await ServiceService.deleteAIntoDB(req.params.id as string)
 
   sendResponse(res, {
     success: true,
