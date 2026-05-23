@@ -1,5 +1,6 @@
 import Stripe from 'stripe'
 import config from '../../config'
+import { Types } from 'mongoose'
 
 const stripe: Stripe = new Stripe(config.stripe?.stripe_api_secret as string, {
   apiVersion: '2025-02-24.acacia',
@@ -11,11 +12,21 @@ interface TPayload {
     name: string
     quantity: number
   }
-  // customerId: string;
-  paymentId: string
+  customer: {
+    name: string;
+    email: string;
+  };
+  paymentId: string | Types.ObjectId
 }
 
 export const createCheckoutSession = async (payload: TPayload) => {
+  const { customer: customerData } = payload;
+  
+  const customer = await stripe.customers.create({
+    name: customerData.name,
+    email: customerData.email,
+  });
+
   const paymentGatewayData = await stripe.checkout.sessions.create({
     line_items: [
       {
@@ -36,6 +47,7 @@ export const createCheckoutSession = async (payload: TPayload) => {
     invoice_creation: {
       enabled: true,
     },
+    customer: customer.id,
     payment_method_types: ['card'],
   })
 

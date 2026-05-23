@@ -71,6 +71,10 @@ const initiatePayment = async (payload: TPayment) => {
       name: 'Booking Payment',
       quantity: 1,
     },
+    customer: {
+      name: booking.name,
+      email: booking.email,
+    },
     paymentId: paymentData._id,
   })
 
