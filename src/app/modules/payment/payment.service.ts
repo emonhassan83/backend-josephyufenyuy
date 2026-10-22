@@ -81,26 +81,63 @@ const initiatePayment = async (payload: TPayment) => {
   return checkoutSession?.url
 }
 
-const confirmPayment = async (query: Record<string, any>) => {
-  const { sessionId, paymentId } = query
+const confirmPayment = async (query: Record<string, unknown>) => {
+  const { sessionId } = query
+  if (typeof sessionId !== 'string' || !sessionId) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid payment session')
+  }
 
-  const session = await startSession()
   const PaymentSession = await stripe.checkout.sessions.retrieve(sessionId)
-  const paymentIntentId = PaymentSession.payment_intent as string
-
-  if (PaymentSession.status !== 'complete') {
+  if (
+    PaymentSession.status !== 'complete' ||
+    PaymentSession.payment_status !== 'paid' ||
+    PaymentSession.mode !== 'payment'
+  ) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      'Payment session is not completed',
+      'Payment session is not a completed payment',
     )
   }
 
+  const paymentId = PaymentSession.metadata?.paymentId
+  const paymentIntentId =
+    typeof PaymentSession.payment_intent === 'string'
+      ? PaymentSession.payment_intent
+      : PaymentSession.payment_intent?.id
+
+  if (!paymentId || !paymentIntentId) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid payment session')
+  }
+
+  const payment = await Payment.findById(paymentId)
+  if (!payment) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Payment not found!')
+  }
+
+  if (
+    PaymentSession.amount_total !== Math.round(payment.amount * 100) ||
+    PaymentSession.currency !== 'usd'
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Payment session does not match the payment amount',
+    )
+  }
+
+  if (payment.isPaid) {
+    if (payment.paymentIntentId === paymentIntentId) return payment
+    throw new AppError(
+      httpStatus.CONFLICT,
+      'Payment has already been processed',
+    )
+  }
+
+  const session = await startSession()
   try {
     session.startTransaction()
 
-    // 1. Update Payment Record
-    const payment = await Payment.findByIdAndUpdate(
-      paymentId,
+    const updatedPayment = await Payment.findOneAndUpdate(
+      { _id: paymentId, isPaid: false },
       {
         isPaid: true,
         status: PAYMENT_STATUS.paid,
@@ -109,13 +146,17 @@ const confirmPayment = async (query: Record<string, any>) => {
       { new: true, session },
     )
 
-    if (!payment) throw new AppError(httpStatus.NOT_FOUND, 'Payment not found!')
+    if (!updatedPayment) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'Payment has already been processed',
+      )
+    }
 
-    // 2. Update Order Status
     const booking = await ServiceBooking.findOneAndUpdate(
-      { _id: payment.booking },
+      { _id: updatedPayment.booking },
       {
-        transactionId: payment.transactionId,
+        transactionId: updatedPayment.transactionId,
         paymentStatus: PAYMENT_STATUS.paid,
         status: ORDER_STATUS.processing,
       },
@@ -125,38 +166,27 @@ const confirmPayment = async (query: Record<string, any>) => {
       throw new AppError(httpStatus.NOT_FOUND, 'Booking not found!')
     }
 
-    const user = await User.findById(payment.user)
+    const user = await User.findById(updatedPayment.user)
 
-    // 🚀 **Send 2 Emails After Successful Payment**
     if (user) {
-      // Payment Confirmation email
       await emailSender(
         user.email,
         'Payment Confirmation – Thank You for Your Purchase',
         generatePaymentEmailTemplate(
           user.name,
-          payment.amount,
-          payment.transactionId,
+          updatedPayment.amount,
+          updatedPayment.transactionId,
         ),
       )
     }
 
     await session.commitTransaction()
-    return payment
-  } catch (error: any) {
+    return updatedPayment
+  } catch (error) {
     await session.abortTransaction()
-    if (paymentIntentId) {
-      try {
-        await stripe.refunds.create({
-          payment_intent: paymentIntentId,
-        })
-      } catch (refundError: any) {
-        console.error('Error processing refund:', refundError.message)
-      }
-    }
-    throw new AppError(httpStatus.BAD_GATEWAY, error.message)
+    throw error
   } finally {
-    session.endSession()
+    await session.endSession()
   }
 }
 

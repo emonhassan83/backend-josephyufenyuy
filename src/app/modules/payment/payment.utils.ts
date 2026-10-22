@@ -41,9 +41,12 @@ export const createCheckoutSession = async (payload: TPayload) => {
       },
     ],
 
-    success_url: `${config.server_url}/payments/confirm-payment?sessionId={CHECKOUT_SESSION_ID}&paymentId=${payload?.paymentId}`,
+    success_url: `${config.server_url}/payments/confirm-payment?sessionId={CHECKOUT_SESSION_ID}`,
     cancel_url: config?.payment_cancel_url,
     mode: 'payment',
+    metadata: {
+      paymentId: payload.paymentId.toString(),
+    },
     invoice_creation: {
       enabled: true,
     },
